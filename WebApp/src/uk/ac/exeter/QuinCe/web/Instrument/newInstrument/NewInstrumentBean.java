@@ -359,7 +359,12 @@ public class NewInstrumentBean extends FileUploadBean {
   private int depth;
 
   /**
-   * The averaging mode
+   * The platform name.
+   */
+  private String platformName = null;
+
+  /**
+   * The platform code.
    */
   private String platformCode = null;
 
@@ -481,12 +486,18 @@ public class NewInstrumentBean extends FileUploadBean {
   private int groupLinkDirection;
 
   /**
+   * Existing platform names/codes
+   */
+  private TreeMap<String, String> existingPlatforms;
+
+  /**
    * Begin a new instrument definition
    *
    * @return The navigation to the start page
    */
   public String start() throws Exception {
     clearAllData();
+    existingPlatforms = InstrumentDB.getPlatforms(getDataSource(), getUser());
     return NAV_NAME;
   }
 
@@ -1825,6 +1836,21 @@ public class NewInstrumentBean extends FileUploadBean {
   }
 
   /**
+   * @return the platformName
+   */
+  public String getPlatformName() {
+    return platformName;
+  }
+
+  /**
+   * @param platformName
+   *          the platform name to set
+   */
+  public void setPlatformName(String platformName) {
+    this.platformName = platformName;
+  }
+
+  /**
    * @return the platformCode
    */
   public String getPlatformCode() {
@@ -1874,7 +1900,7 @@ public class NewInstrumentBean extends FileUploadBean {
       // TODO groups in here.
       Instrument instrument = new Instrument(getUser(), instrumentName,
         instrumentFiles, instrumentVariables, storedVariableProperties,
-        sensorAssignments, sensorGroups, platformCode, false);
+        sensorAssignments, sensorGroups, platformName, platformCode, false);
 
       instrument.setProperty(Instrument.PROP_PRE_FLUSHING_TIME,
         preFlushingTime);
@@ -2409,7 +2435,6 @@ public class NewInstrumentBean extends FileUploadBean {
   }
 
   public List<PositionFormatEntry> getLatitudeFormats() {
-
     if (null == latFormats) {
       TreeMap<Integer, String> latFormatsMap = LatitudeSpecification
         .getFormats();
@@ -2421,5 +2446,15 @@ public class NewInstrumentBean extends FileUploadBean {
     }
 
     return latFormats;
+  }
+
+  public List<String> getExistingPlatformNames() {
+    return new ArrayList<String>(existingPlatforms.keySet());
+  }
+
+  public void platformNameChanged() {
+    if (existingPlatforms.containsKey(platformName)) {
+      platformCode = existingPlatforms.get(platformName);
+    }
   }
 }
