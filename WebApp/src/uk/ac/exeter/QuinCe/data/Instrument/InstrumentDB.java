@@ -152,9 +152,10 @@ public class InstrumentDB {
    * Query for retrieving the list of all instruments that provide NRT data
    */
   private static final String GET_NRT_INSTRUMENTS_QUERY = "SELECT "
-    + "i.id, i.name, CONCAT(u.surname, \", \", u.firstname) AS name "
-    + "FROM instrument AS i " + "INNER JOIN user AS u ON i.owner = u.id "
-    + "WHERE i.nrt = 1 " + "ORDER BY name ASC, i.name ASC";
+    + "i.id, CONCAT(i.platform_name, ': ', i.name) as instrument, "
+    + "CONCAT(u.surname, ', ', u.firstname) AS name " + "FROM instrument AS i "
+    + "INNER JOIN user AS u ON i.owner = u.id " + "WHERE i.nrt = 1 "
+    + "ORDER BY name ASC, instrument ASC";
 
   /**
    * Query used to determine if an instrument with a specified ID exists in the
@@ -221,6 +222,9 @@ public class InstrumentDB {
 
   private static final String ALL_PLATFORMS_QUERY = "SELECT "
     + "platform_name, platform_code FROM instrument ORDER BY created ASC";
+
+  private static final String SAVE_PROPERTIES_STATEMENT = "UPDATE instrument "
+    + "SET properties = ? WHERE id = ?";
 
   /**
    * Store a new instrument in the database
@@ -883,41 +887,6 @@ public class InstrumentDB {
     }
 
     return fileSet;
-  }
-
-  /**
-   * Get the variables measured by an instrument
-   *
-   * @param instrumentId
-   *          The instrument's database ID
-   * @return The variables
-   * @throws MissingParamException
-   *           If any required parameters are missing
-   * @throws DatabaseException
-   *           If a database error occurs
-   * @throws VariableNotFoundException
-   *           If an invalid variable is configured for the instrument
-   */
-  public static List<Variable> getVariables(long instrumentId)
-    throws MissingParamException, DatabaseException, VariableNotFoundException {
-
-    MissingParam.checkZeroPositive(instrumentId, "instrumentId");
-
-    DataSource dataSource = ResourceManager.getInstance().getDBDataSource();
-    Connection conn = null;
-    List<Variable> result = null;
-
-    try {
-      conn = dataSource.getConnection();
-      result = getVariables(conn, instrumentId);
-    } catch (SQLException e) {
-      throw new DatabaseException("Error while getting instrument variables",
-        e);
-    } finally {
-      DatabaseUtils.closeConnection(conn);
-    }
-
-    return result;
   }
 
   /**
@@ -1725,6 +1694,27 @@ public class InstrumentDB {
     }
 
     return result;
+  }
 
+  public static void saveInstrumentProperties(DataSource dataSource,
+    Instrument instrument) throws DatabaseException {
+
+    MissingParam.checkMissing(dataSource, "dataSource");
+    MissingParam.checkMissing(instrument, "instrument");
+
+    try (Connection conn = dataSource.getConnection();
+      PreparedStatement stmt = conn
+        .prepareStatement(SAVE_PROPERTIES_STATEMENT)) {
+
+      if (instrument.getId() == DatabaseUtils.NO_DATABASE_RECORD) {
+        throw new DatabaseException("Instrument not saved to database");
+      }
+
+      stmt.setString(1, instrument.getPropertiesJson());
+      stmt.setLong(2, instrument.getId());
+      stmt.execute();
+    } catch (SQLException e) {
+      throw new DatabaseException("Error saving instrument properties", e);
+    }
   }
 }
