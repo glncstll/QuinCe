@@ -1161,27 +1161,30 @@ public class DataSetDataDB {
     List<Long> runTypeColumnIds = instrument.getSensorAssignments()
       .getRunTypeColumnIDs();
 
-    String sensorValuesSQL = DatabaseUtils
-      .makeInStatementSql(GET_RUN_TYPES_QUERY, runTypeColumnIds.size());
+    if (runTypeColumnIds.size() > 0) {
 
-    try (PreparedStatement stmt = conn.prepareStatement(sensorValuesSQL)) {
+      String sensorValuesSQL = DatabaseUtils
+        .makeInStatementSql(GET_RUN_TYPES_QUERY, runTypeColumnIds.size());
 
-      stmt.setLong(1, datasetId);
+      try (PreparedStatement stmt = conn.prepareStatement(sensorValuesSQL)) {
 
-      int currentParam = 2;
-      for (long column : runTypeColumnIds) {
-        stmt.setLong(currentParam, column);
-        currentParam++;
-      }
+        stmt.setLong(1, datasetId);
 
-      try (ResultSet records = stmt.executeQuery()) {
-        while (records.next()) {
-          result.add(records.getString(2),
-            DateTimeUtils.longToDate(records.getLong(1)));
+        int currentParam = 2;
+        for (long column : runTypeColumnIds) {
+          stmt.setLong(currentParam, column);
+          currentParam++;
         }
+
+        try (ResultSet records = stmt.executeQuery()) {
+          while (records.next()) {
+            result.add(records.getString(2),
+              DateTimeUtils.longToDate(records.getLong(1)));
+          }
+        }
+      } catch (SQLException e) {
+        throw new DatabaseException("Error while getting run type periods", e);
       }
-    } catch (SQLException e) {
-      throw new DatabaseException("Error while getting run type periods", e);
     }
 
     return result;
